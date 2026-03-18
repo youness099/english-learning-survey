@@ -1123,28 +1123,26 @@ document.querySelectorAll('.star').forEach(s=>{
 });
 function submitForm(){
   if(!validate(4))return;
+
   const get=id=>document.getElementById(id)?.value||'';
   const tiles=gid=>[...document.querySelectorAll(`#${gid} .tile.on:not(.tile-add)`)].map(t=>t.dataset.v);
   const tags=tid=>[...document.querySelectorAll(`#${tid} .ct`)].map(t=>t.childNodes[0].textContent.trim());
-  const fv=get('f-fast'),hv=get('f-hard');
+  const fv=get('f-fast'), hv=get('f-hard');
 
-  const data={
-    name:        get('f-name'),
-    age:         get('f-age'),
-    startAge:    get('f-start'),
-    useOutside:  get('f-use'),
-    methods:     [...tiles('mTiles'),...tags('mTags')].join(', '),
-    resources:   get('f-res'),
-    fastestSkill: fv==='__o__'?get('cf-fast'):fv,
-    hardestSkill: hv==='__o__'?get('cf-hard'):hv,
-    strategy:    get('f-strat'),
-    breakthrough:get('f-break'),
-    motivation:  get('f-motiv'),
-    advice:      get('f-best'),
-    submittedAt: new Date().toISOString()
-  };
+  const fd=new FormData();
+  fd.append('Name',                get('f-name'));
+  fd.append('Age range',           get('f-age'));
+  fd.append('Started learning',    get('f-start'));
+  fd.append('Uses English outside',get('f-use'));
+  fd.append('Learning methods',    [...tiles('mTiles'),...tags('mTags')].join(', '));
+  fd.append('Resources used',      get('f-res'));
+  fd.append('Skill improved fastest', fv==='__o__'?get('cf-fast'):fv);
+  fd.append('Hardest skill',       hv==='__o__'?get('cf-hard'):hv);
+  fd.append('Unique strategy',     get('f-strat'));
+  fd.append('Breakthrough moment', get('f-break'));
+  fd.append('Motivation level',    get('f-motiv')||'Not answered');
+  fd.append('Best advice',         get('f-best'));
 
-  // show loading state on button
   const btn=document.querySelector('.ssub');
   const orig=btn.innerHTML;
   btn.innerHTML='Sending…';
@@ -1152,11 +1150,12 @@ function submitForm(){
 
   fetch('https://formspree.io/f/xrbyyjwo',{
     method:'POST',
-    headers:{'Content-Type':'application/json','Accept':'application/json'},
-    body:JSON.stringify(data)
+    body:fd,
+    headers:{'Accept':'application/json'}
   })
-  .then(r=>{
-    if(r.ok){
+  .then(r=>r.json().then(json=>({ok:r.ok,json})))
+  .then(({ok,json})=>{
+    if(ok){
       document.getElementById('wizard').style.display='none';
       const tyEl=document.getElementById('ty');
       tyEl.style.display='block';
@@ -1166,10 +1165,14 @@ function submitForm(){
       document.getElementById('ty').scrollIntoView({behavior:'smooth',block:'start'});
     } else {
       btn.innerHTML=orig; btn.disabled=false;
-      alert('Something went wrong. Please try again.');
+      const msg=(json.errors&&json.errors[0]&&json.errors[0].message)||'Something went wrong.';
+      alert('Error: '+msg+'\nPlease try again.');
     }
   })
-  .catch(()=>{ btn.innerHTML=orig; btn.disabled=false; alert('Network error. Please check your connection and try again.'); });
+  .catch(()=>{
+    btn.innerHTML=orig; btn.disabled=false;
+    alert('Network error — please check your connection and try again.');
+  });
 }
 function resetAll(){
   const btn=document.querySelector('.ssub');
